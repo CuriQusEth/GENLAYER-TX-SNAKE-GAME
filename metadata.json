@@ -1,0 +1,5 @@
+{
+  "name": "SnakeChain: Proof of Play",
+  "description": "A retro-cyberpunk blockchain Snake game where gameplay events trigger real smart contract transactions on GenLayer.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap');
+
+@theme {
+  --font-press-start: "Press Start 2P", system-ui;
+  --font-mono: "JetBrains Mono", monospace;
+  --color-matrix: #00ff41;
+  --color-matrix-dark: #00cc33;
+  --color-danger: #ff4500;
+  --color-bg-dark: #050a05;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: var(--color-matrix);
+  font-family: var(--font-mono);
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .arcade-font {
+  font-family: var(--font-press-start);
+  text-transform: uppercase;
+}
+
+/* Scanline Effect */
+.scanlines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 2;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+
+.glitch-border {
+  border: 2px solid var(--color-matrix);
+  box-shadow: 0 0 15px var(--color-matrix);
+}
+
+.pulsing-apple {
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  from { filter: drop-shadow(0 0 2px var(--color-danger)); }
+  to { filter: drop-shadow(0 0 10px var(--color-danger)); }
+}
+
+.crt-flicker {
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.9; }
+  15% { opacity: 0.95; }
+  20% { opacity: 0.98; }
+  25% { opacity: 0.95; }
+  30% { opacity: 0.9; }
+  35% { opacity: 0.95; }
+  40% { opacity: 0.98; }
+  45% { opacity: 0.95; }
+  50% { opacity: 0.9; }
+  55% { opacity: 0.95; }
+  60% { opacity: 0.98; }
+  65% { opacity: 0.95; }
+  70% { opacity: 0.9; }
+  75% { opacity: 0.95; }
+  80% { opacity: 0.98; }
+  85% { opacity: 0.95; }
+  90% { opacity: 0.9; }
+  95% { opacity: 0.95; }
+  100% { opacity: 0.98; }
+}
+
