@@ -29,14 +29,14 @@ export const Leaderboard: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {entries.map((entry, i) => (
-            <tr key={entry.player} className="border-b border-matrix/10 hover:bg-matrix/5 transition-colors">
-              <td className="py-3 font-mono">#{i + 1}</td>
-              <td className="py-3 font-mono text-matrix/80">{entry.player}</td>
+          {entries.map((entry) => (
+            <tr key={entry.address} className="border-b border-matrix/10 hover:bg-matrix/5 transition-colors">
+              <td className="py-3 font-mono">#{entry.rank}</td>
+              <td className="py-3 font-mono text-matrix/80">{entry.address.slice(0, 10)}...</td>
               <td className="py-3 font-mono text-right">{entry.score}</td>
               <td className="py-3 text-right">
                 <span className="px-2 py-1 text-[10px] bg-matrix/20 text-matrix border border-matrix/50 rounded uppercase">
-                  Efficient
+                  {entry.play_style}
                 </span>
               </td>
             </tr>

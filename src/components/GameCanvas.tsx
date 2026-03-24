@@ -3,7 +3,7 @@ import { useGenLayer } from '../hooks/useGenLayer';
 
 interface GameCanvasProps {
   walletAddress: string;
-  onGameOver: (score: number, apples: number, survival: number, moves: string[]) => void;
+  onGameOver: (score: number, apples: number, survival: number, deathsNearWall: number, moves: string[]) => void;
 }
 
 const GRID_SIZE = 20;
@@ -22,6 +22,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ walletAddress, onGameOve
   const movesRef = useRef<string[]>([]);
   const startTimeRef = useRef(Date.now());
   const applesEatenRef = useRef(0);
+  const deathsNearWallRef = useRef(0);
 
   const { submitScore } = useGenLayer();
 
@@ -99,12 +100,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ walletAddress, onGameOve
 
       // Wall collision
       if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+        deathsNearWallRef.current = 1;
         handleGameOver();
         return;
       }
 
       // Self collision
       if (snakeRef.current.some(segment => segment.x === head.x && segment.y === head.y)) {
+        deathsNearWallRef.current = 0;
         handleGameOver();
         return;
       }
@@ -120,7 +123,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ walletAddress, onGameOve
         
         // Every 5 apples, batch submit score
         if (applesEatenRef.current % 5 === 0) {
-          submitScore(score + 100, applesEatenRef.current, Math.floor((Date.now() - startTimeRef.current) / 1000), 'batch_update');
+          submitScore(
+            walletAddress,
+            score + 100,
+            applesEatenRef.current,
+            Math.floor((Date.now() - startTimeRef.current) / 1000),
+            0, // Not dead yet
+            'batch_update'
+          );
         }
       } else {
         newSnake.pop();
@@ -132,7 +142,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ walletAddress, onGameOve
     const handleGameOver = () => {
       setIsGameOver(true);
       const survival = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      onGameOver(score, applesEatenRef.current, survival, movesRef.current);
+      onGameOver(score, applesEatenRef.current, survival, deathsNearWallRef.current, movesRef.current);
     };
 
     const draw = () => {

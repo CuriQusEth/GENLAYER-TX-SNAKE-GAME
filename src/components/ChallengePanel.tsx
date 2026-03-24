@@ -2,15 +2,23 @@ import React, { useState } from 'react';
 import { useGenLayer } from '../hooks/useGenLayer';
 import { Swords, Send } from 'lucide-react';
 
-export const ChallengePanel: React.FC = () => {
+interface ChallengePanelProps {
+  walletAddress: string;
+}
+
+export const ChallengePanel: React.FC<ChallengePanelProps> = ({ walletAddress }) => {
   const [opponent, setOpponent] = useState('');
   const { createChallenge } = useGenLayer();
 
   const handleSend = async () => {
-    if (!opponent) return;
-    await createChallenge(opponent);
-    setOpponent('');
-    alert('Challenge sent to chain!');
+    if (!opponent || !walletAddress) return;
+    try {
+      await createChallenge(walletAddress, opponent);
+      setOpponent('');
+      alert('Challenge sent to chain!');
+    } catch (err) {
+      console.error('Failed to create challenge', err);
+    }
   };
 
   return (

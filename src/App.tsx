@@ -11,16 +11,11 @@ import { useGenLayer } from './hooks/useGenLayer';
 import { Wallet, Trophy, Swords, Gamepad2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
 // Helper to safely get the provider without triggering proxy conflicts
 const getProvider = () => {
   if (typeof window === 'undefined') return null;
-  return window.ethereum;
+  // Use a direct read that doesn't trigger setter/getter errors if possible
+  return (window as any).ethereum || null;
 };
 
 type Screen = 'home' | 'game' | 'leaderboard' | 'challenges';
@@ -54,7 +49,7 @@ export default function App() {
     }, 3000);
   };
 
-  const handleGameOver = async (score: number, apples: number, survival: number, moves: string[]) => {
+  const handleGameOver = async (score: number, apples: number, survival: number, deathsNearWall: number, moves: string[]) => {
     addToast('GENERATING REPLAY HASH...');
     
     // Replay hash generation
@@ -63,8 +58,15 @@ export default function App() {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const replayHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     
-    addToast('📡 TX SENT: SCORE COMMITTED');
-    await submitScore(score, apples, survival, replayHash);
+    if (walletAddress) {
+      addToast('📡 TX SENT: SCORE COMMITTED');
+      try {
+        await submitScore(walletAddress, score, apples, survival, deathsNearWall, replayHash);
+        addToast('✅ SCORE RECORDED ON-CHAIN');
+      } catch (err) {
+        addToast('❌ TX FAILED');
+      }
+    }
   };
 
   return (
@@ -184,7 +186,7 @@ export default function App() {
               className="w-full flex flex-col items-center"
             >
               <button onClick={() => setCurrentScreen('home')} className="mb-6 text-[10px] arcade-font hover:text-white self-start max-w-md mx-auto w-full">← BACK</button>
-              <ChallengePanel />
+              <ChallengePanel walletAddress={walletAddress || ''} />
             </motion.div>
           )}
         </AnimatePresence>
