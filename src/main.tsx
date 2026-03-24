@@ -8,14 +8,20 @@ if (typeof window !== 'undefined') {
   // Wrap Object.defineProperty to catch redefinition errors
   const originalDefineProperty = Object.defineProperty;
   Object.defineProperty = function(obj, prop, descriptor) {
+    if (prop === 'isZerion' || prop === 'ethereum' || prop === 'isRabby') {
+      try {
+        return originalDefineProperty.call(Object, obj, prop, descriptor);
+      } catch (e) {
+        return obj;
+      }
+    }
     try {
       return originalDefineProperty.call(Object, obj, prop, descriptor);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (
         msg.includes('isZerion') ||
-        msg.includes('ethereum proxy') ||
-        msg.includes('property ethereum') ||
+        msg.includes('ethereum') ||
         msg.includes('Invalid property descriptor') ||
         msg.includes('Cannot redefine property')
       ) {
@@ -31,7 +37,12 @@ if (typeof window !== 'undefined') {
       return originalDefineProperties.call(Object, obj, props);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('isZerion') || msg.includes('Cannot redefine property')) {
+      if (
+        msg.includes('isZerion') || 
+        msg.includes('isRabby') || 
+        msg.includes('ethereum') || 
+        msg.includes('Cannot redefine property')
+      ) {
         return obj;
       }
       throw e;
@@ -54,8 +65,8 @@ if (typeof window !== 'undefined') {
     const msg = args[0]?.toString() || '';
     if (
       msg.includes('isZerion') ||
-      msg.includes('ethereum proxy') ||
-      msg.includes('property ethereum') ||
+      msg.includes('isRabby') ||
+      msg.includes('ethereum') ||
       msg.includes('Invalid property descriptor') ||
       msg.includes('Cannot redefine property')
     ) {
@@ -68,8 +79,8 @@ if (typeof window !== 'undefined') {
     const msg = event.message || '';
     if (
       msg.includes('isZerion') ||
-      msg.includes('ethereum proxy') ||
-      msg.includes('property ethereum') ||
+      msg.includes('isRabby') ||
+      msg.includes('ethereum') ||
       msg.includes('Invalid property descriptor') ||
       msg.includes('Cannot redefine property')
     ) {
@@ -82,8 +93,8 @@ if (typeof window !== 'undefined') {
     const msg = event.reason?.message || '';
     if (
       msg.includes('isZerion') ||
-      msg.includes('ethereum proxy') ||
-      msg.includes('property ethereum') ||
+      msg.includes('isRabby') ||
+      msg.includes('ethereum') ||
       msg.includes('Invalid property descriptor') ||
       msg.includes('Cannot redefine property')
     ) {
