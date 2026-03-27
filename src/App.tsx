@@ -31,10 +31,15 @@ export default function App() {
     if (provider) {
       try {
         const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        setWalletAddress(accounts[0]);
-        addToast('WALLET CONNECTED: ' + accounts[0].slice(0, 6));
+        if (accounts && accounts.length > 0 && accounts[0]) {
+          setWalletAddress(accounts[0]);
+          addToast('WALLET CONNECTED: ' + accounts[0].slice(0, 6));
+        } else {
+          addToast('❌ NO ACCOUNTS FOUND');
+        }
       } catch (err) {
         console.error('Wallet connection failed', err);
+        addToast('❌ CONNECTION FAILED');
       }
     } else {
       alert('Please install Rabby or MetaMask wallet!');
@@ -42,7 +47,7 @@ export default function App() {
   };
 
   const addToast = (message: string) => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
@@ -58,7 +63,7 @@ export default function App() {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const replayHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     
-    if (walletAddress) {
+    if (walletAddress && walletAddress !== 'undefined') {
       addToast('📡 TX SENT: SCORE COMMITTED');
       try {
         await submitScore(walletAddress, score, apples, survival, deathsNearWall, replayHash);
@@ -66,6 +71,8 @@ export default function App() {
       } catch (err) {
         addToast('❌ TX FAILED');
       }
+    } else {
+      addToast('❌ WALLET NOT CONNECTED');
     }
   };
 

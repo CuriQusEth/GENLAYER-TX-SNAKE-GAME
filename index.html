@@ -4,6 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Google AI Studio App</title>
+    <script>
+      // Suppress benign wallet extension/iframe proxy errors early
+      const suppressProps = ['isZerion', 'isRabby', 'ethereum'];
+      window.addEventListener('error', (event) => {
+        const msg = event.message || '';
+        const isBenign = suppressProps.some(p => msg.includes(p)) || 
+          msg.includes('Invalid property descriptor') || 
+          msg.includes('Cannot redefine property');
+        if (isBenign) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', (event) => {
+        const msg = event.reason?.message || '';
+        const isBenign = suppressProps.some(p => msg.includes(p)) || 
+          msg.includes('Invalid property descriptor') || 
+          msg.includes('Cannot redefine property');
+        if (isBenign) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

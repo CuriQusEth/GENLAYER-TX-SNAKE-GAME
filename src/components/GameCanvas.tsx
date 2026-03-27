@@ -122,7 +122,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ walletAddress, onGameOve
         generateApple();
         
         // Every 5 apples, batch submit score
-        if (applesEatenRef.current % 5 === 0) {
+        if (applesEatenRef.current % 5 === 0 && walletAddress && walletAddress !== 'undefined') {
           submitScore(
             walletAddress,
             score + 100,
@@ -130,7 +130,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ walletAddress, onGameOve
             Math.floor((Date.now() - startTimeRef.current) / 1000),
             0, // Not dead yet
             'batch_update'
-          );
+          ).catch(err => console.error('Batch update failed:', err));
         }
       } else {
         newSnake.pop();

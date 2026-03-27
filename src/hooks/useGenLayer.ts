@@ -8,11 +8,20 @@ export function useGenLayer() {
   const [isConnecting, setIsConnecting] = useState(false);
 
   const getClient = useCallback(() => {
-    // Using API key if provided in environment variables
-    return (createClient as any)({ 
+    const provider = typeof window !== 'undefined' ? (window as any).ethereum : null;
+    const config: any = { 
       chain: 'studionet',
-      apiKey: GENLAYER_API_KEY
-    });
+    };
+    
+    if (provider) {
+      config.provider = provider;
+    }
+    
+    if (GENLAYER_API_KEY) {
+      config.apiKey = GENLAYER_API_KEY;
+    }
+    
+    return (createClient as any)(config);
   }, []);
 
   const submitScore = useCallback(async (
@@ -26,15 +35,23 @@ export function useGenLayer() {
     setIsConnecting(true);
     try {
       const client = getClient();
+      console.log('📡 Sending TX to:', CONTRACT_ADDRESS);
+      console.log('👤 Player Account:', player);
+      console.log('📊 Args:', [player, BigInt(score), BigInt(apples), BigInt(survival), BigInt(deathsNearWall), replayHash]);
+      
       const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
+        account: player,
         functionName: 'submit_score',
         args: [player, BigInt(score), BigInt(apples), BigInt(survival), BigInt(deathsNearWall), replayHash],
       });
-      console.log('📡 TX sent:', tx);
+      console.log('✅ TX sent successfully:', tx);
       return tx;
-    } catch (error) {
-      console.error('Error submitting score:', error);
+    } catch (error: any) {
+      console.error('❌ Error submitting score:', error);
+      // Log more details if available
+      if (error.data) console.error('Error data:', error.data);
+      if (error.message) console.error('Error message:', error.message);
       throw error;
     } finally {
       setIsConnecting(false);
@@ -76,6 +93,7 @@ export function useGenLayer() {
       const client = getClient();
       const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
+        account: challenger,
         functionName: 'create_challenge',
         args: [challenger, opponent],
       });
@@ -94,6 +112,7 @@ export function useGenLayer() {
       const client = getClient();
       const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
+        account: player,
         functionName: 'submit_challenge_score',
         args: [challengeId, player, BigInt(score)],
       });
@@ -106,12 +125,13 @@ export function useGenLayer() {
     }
   }, [getClient]);
 
-  const resolveChallenge = useCallback(async (challengeId: string) => {
+  const resolveChallenge = useCallback(async (challengeId: string, player: string) => {
     setIsConnecting(true);
     try {
       const client = getClient();
       const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
+        account: player,
         functionName: 'resolve_challenge',
         args: [challengeId],
       });
