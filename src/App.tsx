@@ -20,10 +20,12 @@ const getProvider = () => {
 
 type Screen = 'home' | 'game' | 'leaderboard' | 'challenges';
 
+let toastCounter = 0;
+
 export default function App() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
-  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
+  const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   const { submitScore } = useGenLayer();
 
   const connectWallet = async () => {
@@ -47,7 +49,7 @@ export default function App() {
   };
 
   const addToast = (message: string) => {
-    const id = Date.now() + Math.random();
+    const id = `toast-${Date.now()}-${toastCounter++}`;
     setToasts(prev => [...prev, { id, message }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { createClient } from 'genlayer-js';
+import { createClient, chains } from 'genlayer-js';
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x25067c997C3973f80a233fC9F3e1833486CaF1d5';
 const GENLAYER_API_KEY = import.meta.env.VITE_GENLAYER_API_KEY;
 
 export function useGenLayer() {
@@ -10,15 +10,19 @@ export function useGenLayer() {
   const getClient = useCallback(() => {
     const provider = typeof window !== 'undefined' ? (window as any).ethereum : null;
     const config: any = { 
-      chain: 'studionet',
+      chain: chains.studionet,
     };
     
     if (provider) {
-      config.provider = provider;
+      config.provider = {
+        request: provider.request.bind(provider),
+        on: provider.on?.bind(provider),
+        removeListener: provider.removeListener?.bind(provider),
+      };
     }
     
     if (GENLAYER_API_KEY) {
-      config.apiKey = GENLAYER_API_KEY;
+      config.endpoint = `https://studio.genlayer.com/api?api_key=${GENLAYER_API_KEY}`;
     }
     
     return (createClient as any)(config);
