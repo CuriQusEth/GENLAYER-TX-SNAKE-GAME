@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { createClient, chains } from 'genlayer-js';
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x25067c997C3973f80a233fC9F3e1833486CaF1d5';
+const envAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+const CONTRACT_ADDRESS = (envAddress && envAddress !== 'undefined') ? envAddress : '0x25067c997C3973f80a233fC9F3e1833486CaF1d5';
 const GENLAYER_API_KEY = import.meta.env.VITE_GENLAYER_API_KEY;
 
 export function useGenLayer() {
@@ -34,21 +35,38 @@ export function useGenLayer() {
     apples: number,
     survival: number,
     deathsNearWall: number,
-    replayHash: string
+    replayHash: string,
+    insight: string = ""
   ) => {
+    if (!player || player === 'undefined' || !player.startsWith('0x')) {
+      console.error('❌ Invalid player address:', player);
+      throw new Error('Invalid player address');
+    }
     setIsConnecting(true);
     try {
       const client = getClient();
       console.log('📡 Sending TX to:', CONTRACT_ADDRESS);
       console.log('👤 Player Account:', player);
-      console.log('📊 Args:', [player, BigInt(score), BigInt(apples), BigInt(survival), BigInt(deathsNearWall), replayHash]);
+      console.log('📊 Args:', [player, BigInt(score), BigInt(apples), BigInt(survival), BigInt(deathsNearWall), replayHash, insight]);
       
-      const tx = await client.writeContract({
-        address: CONTRACT_ADDRESS,
-        account: player,
-        functionName: 'submit_score',
-        args: [player, BigInt(score), BigInt(apples), BigInt(survival), BigInt(deathsNearWall), replayHash],
-      });
+      const safeInsight = insight ? insight.substring(0, 200) : "";
+      let tx;
+      try {
+        tx = await client.writeContract({
+          address: CONTRACT_ADDRESS,
+          account: player,
+          functionName: 'submit_score',
+          args: [player, BigInt(score), BigInt(apples), BigInt(survival), BigInt(deathsNearWall), replayHash, safeInsight],
+        });
+      } catch (err) {
+        console.warn('Failed with 7 args, trying 6 args (older contract version)...');
+        tx = await client.writeContract({
+          address: CONTRACT_ADDRESS,
+          account: player,
+          functionName: 'submit_score',
+          args: [player, BigInt(score), BigInt(apples), BigInt(survival), BigInt(deathsNearWall), replayHash],
+        });
+      }
       console.log('✅ TX sent successfully:', tx);
       return tx;
     } catch (error: any) {

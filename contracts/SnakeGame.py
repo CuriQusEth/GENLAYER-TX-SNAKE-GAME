@@ -2,6 +2,20 @@
 
 from genlayer import *
 
+class SkillsClient:
+    def run(self, skill_name: str, data: str) -> str:
+        prompt = f"Execute skill {skill_name} with data {data}. Return ONLY valid JSON."
+        if skill_name == "PlayStyleClassifierSkill":
+            prompt += " Output keys: play_style, confidence, reasoning."
+        elif skill_name == "ReplayAnalyzerSkill":
+            prompt += " Output keys: pattern, risk_level, insight."
+        elif skill_name == "ChallengeNarratorSkill":
+            prompt += " Output keys: commentary."
+            
+        result = gl.exec_prompt(prompt)
+        return result
+
+skills = SkillsClient()
 
 class SnakeGame(gl.Contract):
     # ─── Persistent Storage ───────────────────────────────────────────
@@ -10,6 +24,9 @@ class SnakeGame(gl.Contract):
     player_total_apples: TreeMap[str, u256]
     player_total_games:  TreeMap[str, u256]
     player_play_style:   TreeMap[str, str]
+    player_confidence:   TreeMap[str, u256]
+    player_pattern:      TreeMap[str, str]
+    player_risk_level:   TreeMap[str, str]
     player_replay_hash:  TreeMap[str, str]
 
     # Leaderboard: ranked list of addresses (top 10 by best score)
@@ -23,6 +40,7 @@ class SnakeGame(gl.Contract):
     challenge_opponent_score:   TreeMap[str, u256]
     challenge_status:           TreeMap[str, str]   # "pending" | "resolved"
     challenge_winner:           TreeMap[str, str]
+    challenge_commentary:       TreeMap[str, str]
     challenge_counter:          u256
 
     # ─── Constructor ──────────────────────────────────────────────────
@@ -44,6 +62,7 @@ class SnakeGame(gl.Contract):
         survival_seconds: u256,
         deaths_near_wall: u256,
         replay_hash: str,
+        insight: str = "",
     ) -> None:
         """
         Called at game-over. Records the result, updates the leaderboard,
@@ -64,38 +83,27 @@ class SnakeGame(gl.Contract):
             self._update_leaderboard(player, score)
 
         # ── AI play-style classification ─────────────────────────────
-        style = self._classify_play_style(apples_eaten, survival_seconds, deaths_near_wall)
-        self.player_play_style[player] = style
-
-    # ─── Private: AI classification ──────────────────────────────────
-    def _classify_play_style(
-        self,
-        apples: u256,
-        survival: u256,
-        deaths_near_wall: u256,
-    ) -> str:
-        """
-        Uses GenLayer's on-chain LLM execution to classify the player's
-        play style as one of: aggressive | cautious | chaotic | efficient
-        """
-        prompt = (
-            f"You are a game analytics AI. A player just finished a Snake game with these stats:\n"
-            f"- Apples eaten: {apples}\n"
-            f"- Survival time (seconds): {survival}\n"
-            f"- Deaths caused by hitting a wall: {deaths_near_wall}\n\n"
-            f"Based on these numbers, classify the player's play style using EXACTLY ONE of "
-            f"these four labels: aggressive, cautious, chaotic, efficient.\n"
-            f"Rules:\n"
-            f"- 'aggressive': high apples, low survival (rushed and bold)\n"
-            f"- 'cautious': low apples, high survival (avoids risk)\n"
-            f"- 'chaotic': high wall deaths, inconsistent stats\n"
-            f"- 'efficient': high apples AND high survival (optimal play)\n"
-            f"Respond with a single lowercase word only. No punctuation, no explanation."
-        )
-        result = gl.exec_prompt(prompt)
-        clean  = result.strip().lower()
-        valid  = ["aggressive", "cautious", "chaotic", "efficient"]
-        return clean if clean in valid else "chaotic"
+        import json
+        
+        # Call PlayStyleClassifierSkill
+        play_style_data = {
+            "apples": int(apples_eaten),
+            "survival_seconds": int(survival_seconds),
+            "deaths_near_wall": int(deaths_near_wall)
+        }
+        
+        try:
+            play_style_result_str = skills.run("PlayStyleClassifierSkill", json.dumps(play_style_data))
+            play_style_result = json.loads(play_style_result_str)
+            self.player_play_style[player] = str(play_style_result.get("play_style", "unknown"))
+            self.player_confidence[player] = u256(int(play_style_result.get("confidence", 0)))
+        except:
+            self.player_play_style[player] = "unknown"
+            self.player_confidence[player] = u256(0)
+            
+        # Store the insight from the frontend
+        self.player_pattern[player] = "frontend_analyzed"
+        self.player_risk_level[player] = insight if insight else "unknown"
 
     # ─── Private: leaderboard maintenance ────────────────────────────
     def _update_leaderboard(self, player: str, score: u256) -> None:
@@ -163,6 +171,9 @@ class SnakeGame(gl.Contract):
         apples = self.player_total_apples.get(player, u256(0))
         games  = self.player_total_games.get(player,  u256(0))
         style  = self.player_play_style.get(player,   "unknown")
+        confidence = self.player_confidence.get(player, u256(0))
+        pattern = self.player_pattern.get(player, "unknown")
+        risk_level = self.player_risk_level.get(player, "unknown")
         replay = self.player_replay_hash.get(player,  "")
         return (
             f'{{"address":"{player}",'
@@ -170,6 +181,9 @@ class SnakeGame(gl.Contract):
             f'"total_apples":{apples},'
             f'"total_games":{games},'
             f'"play_style":"{style}",'
+            f'"confidence":{confidence},'
+            f'"pattern":"{pattern}",'
+            f'"risk_level":"{risk_level}",'
             f'"last_replay_hash":"{replay}"}}'
         )
 
@@ -192,6 +206,7 @@ class SnakeGame(gl.Contract):
         self.challenge_opponent_score[cid]   = u256(0)
         self.challenge_status[cid]           = "pending"
         self.challenge_winner[cid]           = ""
+        self.challenge_commentary[cid]       = ""
 
         return cid
 
@@ -243,6 +258,20 @@ class SnakeGame(gl.Contract):
 
         self.challenge_winner[cid] = winner
         self.challenge_status[cid] = "resolved"
+        
+        import json
+        narrator_data = {
+            "challenger_score": int(c_score),
+            "opponent_score": int(o_score),
+            "winner": winner
+        }
+        commentary_result_str = skills.run("ChallengeNarratorSkill", json.dumps(narrator_data))
+        try:
+            commentary_result = json.loads(commentary_result_str)
+            self.challenge_commentary[cid] = commentary_result.get("commentary", "A match for the ages.")
+        except:
+            self.challenge_commentary[cid] = "A match for the ages."
+            
         return winner
 
     @gl.public.view
@@ -258,6 +287,7 @@ class SnakeGame(gl.Contract):
             f'"challenger_score":{self.challenge_challenger_score.get(cid, u256(0))},'
             f'"opponent_score":{self.challenge_opponent_score.get(cid, u256(0))},'
             f'"status":"{self.challenge_status.get(cid,"")}",'
-            f'"winner":"{self.challenge_winner.get(cid,"")}"'
+            f'"winner":"{self.challenge_winner.get(cid,"")}",'
+            f'"commentary":"{self.challenge_commentary.get(cid,"")}"'
             f'}}'
         )

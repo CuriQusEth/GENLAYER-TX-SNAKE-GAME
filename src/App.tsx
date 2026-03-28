@@ -8,6 +8,7 @@ import { GameCanvas } from './components/GameCanvas';
 import { Leaderboard } from './components/Leaderboard';
 import { ChallengePanel } from './components/ChallengePanel';
 import { useGenLayer } from './hooks/useGenLayer';
+import { useSkills } from './hooks/useSkills';
 import { Wallet, Trophy, Swords, Gamepad2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -26,7 +27,9 @@ export default function App() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
+  const [aiInsight, setAiInsight] = useState<any>(null);
   const { submitScore } = useGenLayer();
+  const { classifyPlayStyle, analyzeReplay } = useSkills();
 
   const connectWallet = async () => {
     const provider = getProvider();
@@ -65,10 +68,22 @@ export default function App() {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const replayHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     
+    // Call AI Skills in parallel
+    addToast('🧠 ANALYZING GAMEPLAY...');
+    const [styleData, replayData] = await Promise.all([
+      classifyPlayStyle({ apples, survival_seconds: survival, deaths_near_wall: deathsNearWall }),
+      analyzeReplay({ moves, score })
+    ]);
+    
+    setAiInsight({
+      style: styleData,
+      replay: replayData
+    });
+
     if (walletAddress && walletAddress !== 'undefined') {
       addToast('📡 TX SENT: SCORE COMMITTED');
       try {
-        await submitScore(walletAddress, score, apples, survival, deathsNearWall, replayHash);
+        await submitScore(walletAddress, score, apples, survival, deathsNearWall, replayHash, replayData?.insight || 'No insight available');
         addToast('✅ SCORE RECORDED ON-CHAIN');
       } catch (err) {
         addToast('❌ TX FAILED');
@@ -128,7 +143,14 @@ export default function App() {
                 <MenuButton 
                   icon={<Gamepad2 />} 
                   label="START GAME" 
-                  onClick={() => walletAddress ? setCurrentScreen('game') : connectWallet()} 
+                  onClick={() => {
+                    if (walletAddress) {
+                      setAiInsight(null);
+                      setCurrentScreen('game');
+                    } else {
+                      connectWallet();
+                    }
+                  }} 
                 />
                 <MenuButton 
                   icon={<Trophy />} 
@@ -169,7 +191,7 @@ export default function App() {
                 <button onClick={() => setCurrentScreen('home')} className="text-[10px] arcade-font hover:text-white">← BACK</button>
                 <div className="text-[10px] arcade-font text-matrix/50">STUDIONET ACTIVE</div>
               </div>
-              <GameCanvas walletAddress={walletAddress || ''} onGameOver={handleGameOver} />
+              <GameCanvas walletAddress={walletAddress || ''} onGameOver={handleGameOver} aiInsight={aiInsight} />
             </motion.div>
           )}
 
